@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect
 import sqlite3
 from datetime import date, datetime, timedelta
 
@@ -197,6 +197,81 @@ def leave_request():
         "leave request.html",
         message=message
     )
+
+@app.route("/hr")
+def hr_dashboard():
+    connection = get_db_connection()
+
+    pending_requests = connection.execute("""
+        SELECT
+            leave_requests.*,
+            employees.name AS employee_name
+        FROM leave_requests
+        JOIN employees
+            ON leave_requests.employee_id = employees.employee_id
+        WHERE leave_requests.status = 'Pending'
+        ORDER BY leave_requests.created_at ASC
+    """).fetchall()
+
+    connection.close()
+
+    return render_template(
+        "hr_dashboard.html",
+        pending_requests=pending_requests
+    )
+
+
+@app.route("/hr/request/<int:request_id>/<action>", methods=["POST"])
+def update_leave_request(request_id, action):
+    if action not in ["approve", "reject"]:
+        return "Invalid action", 400
+
+    connection = get_db_connection()
+
+    leave_request_record = connection.execute("""
+        SELECT *
+        FROM leave_requests
+        WHERE request_id = ?
+    """, (request_id,)).fetchone()
+
+    if leave_request_record is None:
+        connection.close()
+        return "Leave request not found", 404
+
+    if leave_request_record["status"] != "Pending":
+        connection.close()
+        return "Leave request has already been processed", 400
+
+    if action == "approve":
+        new_status = "Approved"
+        
+        if leave_request_record["leave_type"] == "Annual Leave":
+                connection.execute("""
+                    UPDATE employees
+                    SET leave_balance = leave_balance - ?
+                    WHERE employee_id = ?
+                """, (
+                    leave_request_record["working_days"],
+                    leave_request_record["employee_id"]
+                ))
+
+    else:
+        new_status = "Rejected"
+
+
+    connection.execute("""
+        UPDATE leave_requests
+        SET status = ?
+        WHERE request_id = ?
+    """, (
+        new_status,
+        request_id
+    ))    
+
+    connection.commit()
+    connection.close()
+
+    return redirect("/hr")
 
 if __name__ == "__main__":
     create_database()
