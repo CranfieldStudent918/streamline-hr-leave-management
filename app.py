@@ -1,9 +1,10 @@
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, session
+from functools import wraps 
 import sqlite3
 from datetime import date, datetime, timedelta
 
 app = Flask(__name__)
-
+app.secret_key = "streamline-hr-development-key"
 
 def get_db_connection():
     connection = sqlite3.connect("streamline_hr.db")
@@ -73,6 +74,31 @@ def create_database():
     connection.commit()
     connection.close()
 
+def get_current_user():
+    user_id = session.get("user_id", 1)
+
+    connection = get_db_connection()
+
+    user = connection.execute(
+        "SELECT * FROM employees WHERE employee_id = ?",
+        (user_id,)
+    ).fetchone()
+
+    connection.close()
+
+    return user
+
+def hr_required(view_function):
+    @wraps(view_function)
+    def wrapped_view(*args, **kwargs):
+        user = get_current_user()
+
+        if user is None or user["role"] != "hr":
+            return "Access denied. HR role required.", 403
+
+        return view_function(*args, **kwargs)
+
+    return wrapped_view
 
 @app.route("/")
 def home():
@@ -198,8 +224,30 @@ def leave_request():
         message=message
     )
 
+@app.route("/switch-user/<int:user_id>")
+def switch_user(user_id):
+    connection = get_db_connection()
+
+    user = connection.execute(
+        "SELECT * FROM employees WHERE employee_id = ?",
+        (user_id,)
+    ).fetchone()
+
+    connection.close()
+
+    if user is None:
+        return "User not found", 404
+
+    session["user_id"] = user_id
+
+    if user["role"] == "hr":
+        return redirect("/hr")
+
+    return redirect("/")
+
 @app.route("/hr")
-def hr_dashboard():
+@hr_required
+def hr_dashboard():   
     connection = get_db_connection()
 
     pending_requests = connection.execute("""
@@ -222,6 +270,7 @@ def hr_dashboard():
 
 
 @app.route("/hr/request/<int:request_id>/<action>", methods=["POST"])
+@hr_required
 def update_leave_request(request_id, action):
     if action not in ["approve", "reject"]:
         return "Invalid action", 400
