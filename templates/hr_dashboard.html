@@ -3,68 +3,266 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>HR Leave Management</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>HR Dashboard | StreamlineCorp</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='styles.css') }}"
+    >
 </head>
 
 <body>
 
-    <h1>HR Leave Management</h1>
+<header class="app-header">
 
-    <h2>Pending Leave Requests</h2>
+    <div class="header-inner">
 
-    {% if pending_requests %}
+        <div class="brand">
 
-        <table border="1">
-            <tr>
-                <th>Employee</th>
-                <th>Leave Type</th>
-                <th>Start Date</th>
-                <th>End Date</th>
-                <th>Working Days</th>
-                <th>Reason</th>
-                <th>Action</th>
-            </tr>
+            <div class="brand-mark" aria-hidden="true">
+                SC
+            </div>
 
-            {% for leave in pending_requests %}
-            <tr>
-                <td>{{ leave["employee_name"] }}</td>
-                <td>{{ leave["leave_type"] }}</td>
-                <td>{{ leave["start_date"] }}</td>
-                <td>{{ leave["end_date"] }}</td>
-                <td>{{ leave["working_days"] }}</td>
-                <td>{{ leave["reason"] }}</td>
+            <div class="brand-text">
 
-                <td>
-                    <form
-                        method="POST"
-                        action="/hr/request/{{ leave['request_id'] }}/approve"
-                        style="display:inline;"
-                    >
-                        <button type="submit">Approve</button>
-                    </form>
+                <span class="brand-title">
+                    StreamlineCorp
+                </span>
 
-                    <form
-                        method="POST"
-                        action="/hr/request/{{ leave['request_id'] }}/reject"
-                        style="display:inline;"
-                    >
-                        <button type="submit">Reject</button>
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
+                <span class="brand-subtitle">
+                    HR Administration
+                </span>
 
-    {% else %}
+            </div>
 
-        <p>There are no pending leave requests.</p>
+        </div>
 
-    {% endif %}
 
-    <br>
+        <nav class="header-nav" aria-label="HR navigation">
+            <a href="/hr">HR Dashboard</a>
+            <a href="/">Employee View</a>
+        </nav>
 
-    <a href="/">Employee Dashboard</a>
+    </div>
+
+</header>
+
+
+<main class="page">
+
+    <div class="page-heading">
+
+        <p class="eyebrow">
+            HR administration
+        </p>
+
+        <h1>
+            Leave approvals
+        </h1>
+
+        <p class="page-intro">
+            Review pending employee leave requests and either
+            approve or reject each submission.
+        </p>
+
+    </div>
+
+
+    <section class="summary-grid">
+
+        <article class="metric-card primary">
+
+            <span class="metric-label">
+                Pending requests
+            </span>
+
+            <span class="metric-value">
+                {{ pending_requests|length }}
+            </span>
+
+            <span class="metric-detail">
+                Awaiting HR decision
+            </span>
+
+        </article>
+
+
+        <article class="metric-card">
+
+            <span class="metric-label">
+                Workflow
+            </span>
+
+            <span class="metric-value">
+                HR Review
+            </span>
+
+            <span class="metric-detail">
+                Approval or rejection required
+            </span>
+
+        </article>
+
+
+        <article class="metric-card">
+
+            <span class="metric-label">
+                Access
+            </span>
+
+            <span class="metric-value">
+                HR Only
+            </span>
+
+            <span class="metric-detail">
+                Protected by role-based authorisation
+            </span>
+
+        </article>
+
+    </section>
+
+
+    <section class="card" aria-labelledby="pending-heading">
+
+        <div class="card-header">
+
+            <h2 id="pending-heading">
+                Pending leave requests
+            </h2>
+
+            <p>
+                Requests are displayed in the order they were submitted.
+            </p>
+
+        </div>
+
+
+        <div class="card-body">
+
+            {% if pending_requests %}
+
+                <div class="table-wrapper">
+
+                    <table>
+
+                        <thead>
+
+                            <tr>
+                                <th scope="col">Employee</th>
+                                <th scope="col">Leave type</th>
+                                <th scope="col">Start</th>
+                                <th scope="col">End</th>
+                                <th scope="col">Days</th>
+                                <th scope="col">Reason</th>
+                                <th scope="col">Action</th>
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody>
+
+                            {% for leave in pending_requests %}
+
+                            <tr>
+
+                                <td>
+                                    <strong>
+                                        {{ leave["employee_name"] }}
+                                    </strong>
+                                </td>
+
+                                <td>
+                                    {{ leave["leave_type"] }}
+                                </td>
+
+                                <td class="date-cell">
+                                    {{ leave["start_date"] }}
+                                </td>
+
+                                <td class="date-cell">
+                                    {{ leave["end_date"] }}
+                                </td>
+
+                                <td>
+                                    {{ leave["working_days"] }}
+                                </td>
+
+                                <td>
+                                    {% if leave["reason"] %}
+                                        {{ leave["reason"] }}
+                                    {% else %}
+                                        <span class="toolbar-text">
+                                            No reason provided
+                                        </span>
+                                    {% endif %}
+                                </td>
+
+                                <td>
+
+                                    <div class="actions">
+
+                                        <form
+                                            method="POST"
+                                            action="/hr/request/{{ leave['request_id'] }}/approve"
+                                        >
+                                            <button
+                                                class="button-small"
+                                                type="submit"
+                                            >
+                                                Approve
+                                            </button>
+                                        </form>
+
+
+                                        <form
+                                            method="POST"
+                                            action="/hr/request/{{ leave['request_id'] }}/reject"
+                                        >
+                                            <button
+                                                class="button-danger button-small"
+                                                type="submit"
+                                            >
+                                                Reject
+                                            </button>
+                                        </form>
+
+                                    </div>
+
+                                </td>
+
+                            </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            {% else %}
+
+                <div class="empty-state">
+
+                    <strong>
+                        No pending leave requests
+                    </strong>
+
+                    There is currently nothing waiting for HR review.
+
+                </div>
+
+            {% endif %}
+
+        </div>
+
+    </section>
+
+</main>
 
 </body>
-
 </html>

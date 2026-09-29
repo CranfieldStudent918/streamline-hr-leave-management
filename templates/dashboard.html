@@ -1,43 +1,218 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <title>Employee Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Employee Dashboard | StreamlineCorp</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='styles.css') }}"
+    >
 </head>
+
 <body>
 
-    <h1>Employee Dashboard</h1>
+<header class="app-header">
+    <div class="header-inner">
 
-    <p>Welcome, {{ employee["name"] }}</p>
+        <div class="brand">
+            <div class="brand-mark" aria-hidden="true">
+                SC
+            </div>
 
-<p>Annual leave balance: {{ employee["leave_balance"] }} days</p>
+            <div class="brand-text">
+                <span class="brand-title">
+                    StreamlineCorp
+                </span>
 
-    <a href="/leave-request">Request Leave</a>
-<h2>Your Leave Requests</h2>
+                <span class="brand-subtitle">
+                    Employee Services
+                </span>
+            </div>
+        </div>
 
-{% if leave_requests %}
-    <table border="1">
-        <tr>
-            <th>Leave Type</th>
-            <th>Start Date</th>
-            <th>End Date</th>
-            <th>Working Days</th>
-            <th>Status</th>
-        </tr>
+        <nav class="header-nav" aria-label="Main navigation">
+            <a href="/">Dashboard</a>
+            <a href="/leave-request">Request Leave</a>
+        </nav>
 
-        {% for leave in leave_requests %}
-        <tr>
-            <td>{{ leave["leave_type"] }}</td>
-            <td>{{ leave["start_date"] }}</td>
-            <td>{{ leave["end_date"] }}</td>
-            <td>{{ leave["working_days"] }}</td>
-            <td>{{ leave["status"] }}</td>
-        </tr>
-        {% endfor %}
-    </table>
-{% else %}
-    <p>No leave requests submitted yet.</p>
-{% endif %}
+    </div>
+</header>
+
+
+<main class="page">
+
+    <div class="page-heading">
+        <p class="eyebrow">Employee portal</p>
+
+        <h1>Welcome, {{ employee["name"] }}</h1>
+
+        <p class="page-intro">
+            Review your annual leave entitlement, submit new requests
+            and track the progress of existing leave.
+        </p>
+    </div>
+
+
+    <section
+        class="summary-grid"
+        aria-label="Leave summary"
+    >
+
+        <article class="metric-card primary">
+            <span class="metric-label">
+                Annual leave balance
+            </span>
+
+            <span class="metric-value">
+                {{ employee["leave_balance"] }} days
+            </span>
+
+            <span class="metric-detail">
+                Current available entitlement
+            </span>
+        </article>
+
+
+        <article class="metric-card">
+            <span class="metric-label">
+                Employee
+            </span>
+
+            <span class="metric-value">
+                {{ employee["name"] }}
+            </span>
+
+            <span class="metric-detail">
+                StreamlineCorp employee account
+            </span>
+        </article>
+
+
+        <article class="metric-card">
+            <span class="metric-label">
+                Leave requests
+            </span>
+
+            <span class="metric-value">
+                {{ leave_requests|length }}
+            </span>
+
+            <span class="metric-detail">
+                Requests currently held in your history
+            </span>
+        </article>
+
+    </section>
+
+
+    <section class="card" aria-labelledby="leave-history-heading">
+
+        <div class="card-header">
+            <h2 id="leave-history-heading">
+                Leave request history
+            </h2>
+
+            <p>
+                Track the dates, duration and current status
+                of your submitted requests.
+            </p>
+        </div>
+
+
+        <div class="card-body">
+
+            <div class="toolbar">
+                <span class="toolbar-text">
+                    Your most recent requests appear first.
+                </span>
+
+                <a
+                    class="button button-primary"
+                    href="/leave-request"
+                >
+                    + New leave request
+                </a>
+            </div>
+
+
+            {% if leave_requests %}
+
+                <div class="table-wrapper">
+
+                    <table>
+
+                        <thead>
+                            <tr>
+                                <th scope="col">Leave type</th>
+                                <th scope="col">Start date</th>
+                                <th scope="col">End date</th>
+                                <th scope="col">Working days</th>
+                                <th scope="col">Status</th>
+                            </tr>
+                        </thead>
+
+
+                        <tbody>
+
+                            {% for leave in leave_requests %}
+
+                            <tr>
+                                <td>
+                                    <strong>
+                                        {{ leave["leave_type"] }}
+                                    </strong>
+                                </td>
+
+                                <td class="date-cell">
+                                    {{ leave["start_date"] }}
+                                </td>
+
+                                <td class="date-cell">
+                                    {{ leave["end_date"] }}
+                                </td>
+
+                                <td>
+                                    {{ leave["working_days"] }}
+                                </td>
+
+                                <td>
+                                    <span
+                                        class="status status-{{ leave['status']|lower }}"
+                                    >
+                                        {{ leave["status"] }}
+                                    </span>
+                                </td>
+                            </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            {% else %}
+
+                <div class="empty-state">
+                    <strong>
+                        No leave requests yet
+                    </strong>
+
+                    Submit your first request when you are ready.
+                </div>
+
+            {% endif %}
+
+        </div>
+
+    </section>
+
+</main>
 
 </body>
 </html>

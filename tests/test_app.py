@@ -145,7 +145,7 @@ def test_hr_user_can_access_hr_dashboard():
         response = client.get("/hr")
 
         assert response.status_code == 200
-        assert b"HR Leave Management" in response.data
+        assert b"Leave approvals" in response.data
 
 def test_invalid_hr_action_is_rejected():
     app.config["TESTING"] = True

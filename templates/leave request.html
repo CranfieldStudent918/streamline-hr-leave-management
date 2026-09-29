@@ -1,50 +1,224 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <title>Request Leave</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Request Leave | StreamlineCorp</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='styles.css') }}"
+    >
 </head>
+
 <body>
 
-    <h1>Request Leave</h1>
-    {% if message %}
-        <p>{{ message }}</p>
-    {% endif %}
-    
-<form method="POST">
+<header class="app-header">
 
-        <label for="leave_type">Leave type:</label><br>
-        <select id="leave_type" name="leave_type" required>
-            <option value="">Select leave type</option>
-            <option value="Annual Leave">Annual Leave</option>
-            <option value="Sick Leave">Sick Leave</option>
-            <option value="Unpaid Leave">Unpaid Leave</option>
-        </select>
+    <div class="header-inner">
 
-        <br><br>
+        <div class="brand">
 
-        <label for="start_date">Start date:</label><br>
-        <input type="date" id="start_date" name="start_date" required>
+            <div class="brand-mark" aria-hidden="true">
+                SC
+            </div>
 
-        <br><br>
+            <div class="brand-text">
+                <span class="brand-title">
+                    StreamlineCorp
+                </span>
 
-        <label for="end_date">End date:</label><br>
-        <input type="date" id="end_date" name="end_date" required>
+                <span class="brand-subtitle">
+                    Employee Services
+                </span>
+            </div>
 
-        <br><br>
+        </div>
 
-        <label for="reason">Reason:</label><br>
-        <textarea id="reason" name="reason" rows="4" cols="40"></textarea>
 
-        <br><br>
+        <nav class="header-nav" aria-label="Main navigation">
+            <a href="/">Dashboard</a>
+            <a href="/leave-request">Request Leave</a>
+        </nav>
 
-        <button type="submit">Submit Leave Request</button>
+    </div>
 
-    </form>
+</header>
 
-    <br>
 
-    <a href="/">Back to Dashboard</a>
+<main class="page">
+
+    <div class="page-heading">
+
+        <p class="eyebrow">
+            Leave management
+        </p>
+
+        <h1>
+            Request leave
+        </h1>
+
+        <p class="page-intro">
+            Enter the dates and leave type below.
+            Your request will be submitted to HR for review.
+        </p>
+
+    </div>
+
+
+    <section class="card form-card">
+
+        <div class="card-header">
+
+            <h2>
+                Leave request details
+            </h2>
+
+            <p>
+                Fields marked with an asterisk are required.
+            </p>
+
+        </div>
+
+
+        <div class="card-body">
+
+            {% if message %}
+
+                <div
+                    class="message"
+                    role="status"
+                    aria-live="polite"
+                >
+                    {{ message }}
+                </div>
+
+            {% endif %}
+
+
+            <form method="POST">
+
+                <div class="form-grid">
+
+                    <div class="form-group full-width">
+
+                        <label for="leave_type">
+                            Leave type
+                            <span class="required">*</span>
+                        </label>
+
+                        <select
+                            id="leave_type"
+                            name="leave_type"
+                            required
+                        >
+
+                            <option value="">
+                                Select a leave type
+                            </option>
+
+                            <option value="Annual Leave">
+                                Annual Leave
+                            </option>
+
+                            <option value="Sick Leave">
+                                Sick Leave
+                            </option>
+
+                            <option value="Unpaid Leave">
+                                Unpaid Leave
+                            </option>
+
+                        </select>
+
+                        <p class="help-text">
+                            Annual Leave will be deducted from your
+                            entitlement once approved.
+                        </p>
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label for="start_date">
+                            Start date
+                            <span class="required">*</span>
+                        </label>
+
+                        <input
+                            type="date"
+                            id="start_date"
+                            name="start_date"
+                            required
+                        >
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label for="end_date">
+                            End date
+                            <span class="required">*</span>
+                        </label>
+
+                        <input
+                            type="date"
+                            id="end_date"
+                            name="end_date"
+                            required
+                        >
+
+                    </div>
+
+
+                    <div class="form-group full-width">
+
+                        <label for="reason">
+                            Reason
+                        </label>
+
+                        <textarea
+                            id="reason"
+                            name="reason"
+                            placeholder="Optional supporting information"
+                        ></textarea>
+
+                        <p class="help-text">
+                            Only provide information relevant to
+                            processing your request.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div class="form-actions">
+
+                    <button type="submit">
+                        Submit leave request
+                    </button>
+
+                    <a
+                        class="button button-secondary"
+                        href="/"
+                    >
+                        Cancel
+                    </a>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </section>
+
+</main>
 
 </body>
 </html>
