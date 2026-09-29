@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Request Leave</title>
+</head>
+<body>
+
+    <h1>Request Leave</h1>
+    {% if message %}
+        <p>{{ message }}</p>
+    {% endif %}
+    
+<form method="POST">
+
+        <label for="leave_type">Leave type:</label><br>
+        <select id="leave_type" name="leave_type" required>
+            <option value="">Select leave type</option>
+            <option value="Annual Leave">Annual Leave</option>
+            <option value="Sick Leave">Sick Leave</option>
+            <option value="Unpaid Leave">Unpaid Leave</option>
+        </select>
+
+        <br><br>
+
+        <label for="start_date">Start date:</label><br>
+        <input type="date" id="start_date" name="start_date" required>
+
+        <br><br>
+
+        <label for="end_date">End date:</label><br>
+        <input type="date" id="end_date" name="end_date" required>
+
+        <br><br>
+
+        <label for="reason">Reason:</label><br>
+        <textarea id="reason" name="reason" rows="4" cols="40"></textarea>
+
+        <br><br>
+
+        <button type="submit">Submit Leave Request</button>
+
+    </form>
+
+    <br>
+
+    <a href="/">Back to Dashboard</a>
+
+</body>
+</html>
