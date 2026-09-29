@@ -146,44 +146,57 @@ def leave_request():
                 reason = request.form["reason"]
                     
                 connection = get_db_connection()
-                connection.execute("""
-                     INSERT INTO leave_requests
-                     (
-                           employee_id,
-                           leave_type,
-                           start_date,
-                           end_date,
-                           working_days,
-                           status,
-                           reason,
-                           created_at                         
-                      )
-                      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-               """, (
-                   1,
-                   leave_type,
-                   start_date,
-                   end_date,
-                   working_days,
-                   "Pending",
-                   reason,
-                   datetime.now().isoformat()
-            ))
+                overlapping_request = connection.execute("""
+                         SELECT *
+                         FROM leave_requests
+                         WHERE employee_id = ?
+                           AND status IN ('Pending', 'Approved')
+                           AND NOT (end_date < ? OR start_date > ?)
+                """, (
+                    1,
+                    start_date,
+                    end_date
+                )).fetchone()
 
-            connection.commit()
-            connection.close()
+                if overlapping_request:
+                    message = (
+                        "This leave request overlaps with an existing "
+                        "pending or approved request."
+                    )
+                    connection.close()
 
-            message = (
-                f"Leave request submitted successfully. "
-                f"Working days requested: {working_days}. "
-                f"Status: Pending."
-            )  
+                else:
+                    reason = request.form["reason"]
+
+                    connection.execute("""
+                        INSERT INTO leave_requests
+                        (employee_id, leave_type, start_date, end_date,
+                         working_days, status, reason, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        1,
+                        leave_type,
+                        start_date,
+                        end_date,
+                        working_days,
+                        "Pending",
+                        reason,
+                        datetime.now().isoformat()
+                    ))
+
+                    connection.commit()
+                    connection.close()
+
+                    message = (
+                        f"Leave request submitted successfully. "
+                        f"Working days requested: {working_days}. "
+                        f"Status: Pending."
+                    ) 
                      
     return render_template(
         "leave request.html",
         message=message
     )
-
 
 if __name__ == "__main__":
     create_database()
