@@ -82,11 +82,19 @@ def home():
         "SELECT * FROM employees WHERE employee_id = 1"
     ).fetchone()
 
+    leave_requests = connection.execute("""
+        SELECT *
+        FROM leave_requests
+        WHERE employee_id = 1
+        ORDER BY created_at DESC
+    """).fetchall()
+    
     connection.close()
 
     return render_template(
         "dashboard.html",
-        employee=employee
+        employee=employee,
+        leave_requests=leave_requests
     )
 
 

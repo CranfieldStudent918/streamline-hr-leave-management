@@ -13,6 +13,31 @@
 <p>Annual leave balance: {{ employee["leave_balance"] }} days</p>
 
     <a href="/leave-request">Request Leave</a>
+<h2>Your Leave Requests</h2>
+
+{% if leave_requests %}
+    <table border="1">
+        <tr>
+            <th>Leave Type</th>
+            <th>Start Date</th>
+            <th>End Date</th>
+            <th>Working Days</th>
+            <th>Status</th>
+        </tr>
+
+        {% for leave in leave_requests %}
+        <tr>
+            <td>{{ leave["leave_type"] }}</td>
+            <td>{{ leave["start_date"] }}</td>
+            <td>{{ leave["end_date"] }}</td>
+            <td>{{ leave["working_days"] }}</td>
+            <td>{{ leave["status"] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+{% else %}
+    <p>No leave requests submitted yet.</p>
+{% endif %}
 
 </body>
 </html>
