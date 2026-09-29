@@ -100,6 +100,44 @@ def hr_required(view_function):
 
     return wrapped_view
 
+def validate_leave_request(
+    employee,
+    leave_type,
+    start_date,
+    end_date
+):
+    allowed_leave_types = [
+        "Annual Leave",
+        "Sick Leave",
+        "Unpaid Leave"
+    ]
+
+    if leave_type not in allowed_leave_types:
+        return "Please select a valid leave type.", None
+
+    if end_date < start_date:
+        return "End date cannot be before start date.", None
+
+    if start_date < date.today().isoformat():
+        return "Leave cannot start before today's date.", None
+
+    working_days = calculate_working_days(
+        start_date,
+        end_date
+    )
+
+    if (
+        leave_type == "Annual Leave"
+        and working_days > employee["leave_balance"]
+    ):
+        return (
+            f"Insufficient leave balance. "
+            f"You have {employee['leave_balance']} days available.",
+            None
+        )
+
+    return None, working_days
+
 @app.route("/")
 def home():
     connection = get_db_connection()
@@ -171,33 +209,61 @@ def leave_request():
             else:
                 reason = request.form["reason"]
                     
+            connection = get_db_connection()
+            
+            employee = connection.execute(
+                "SELECT * FROM employees WHERE employee_id = 1"
+            ).fetchone()
+            
+            connection.close()
+            
+            validation_error, working_days = validate_leave_request(
+                employee,
+                leave_type,
+                start_date,
+                end_date
+            )
+            
+            if validation_error:
+                message = validation_error
+            
+            else:
                 connection = get_db_connection()
+            
                 overlapping_request = connection.execute("""
-                         SELECT *
-                         FROM leave_requests
-                         WHERE employee_id = ?
-                           AND status IN ('Pending', 'Approved')
-                           AND NOT (end_date < ? OR start_date > ?)
+                    SELECT *
+                    FROM leave_requests
+                    WHERE employee_id = ?
+                      AND status IN ('Pending', 'Approved')
+                      AND NOT (end_date < ? OR start_date > ?)
                 """, (
                     1,
                     start_date,
                     end_date
                 )).fetchone()
-
+            
                 if overlapping_request:
                     message = (
                         "This leave request overlaps with an existing "
                         "pending or approved request."
                     )
+            
                     connection.close()
-
+            
                 else:
                     reason = request.form["reason"]
-
+            
                     connection.execute("""
                         INSERT INTO leave_requests
-                        (employee_id, leave_type, start_date, end_date,
-                         working_days, status, reason, created_at)
+                        (
+                            employee_id,
+                            leave_type,
+                            start_date,
+                            end_date,
+                            working_days,
+                            status,
+                            reason,
+                            created_at
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     """, (
                         1,
