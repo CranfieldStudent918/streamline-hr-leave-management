@@ -1,18 +1,31 @@
 from flask import Flask, render_template, request, redirect, session
-from functools import wraps 
+from functools import wraps
 import sqlite3
 from datetime import date, datetime, timedelta
 
+
 app = Flask(__name__)
+
+# Development-only secret used to support Flask sessions.
+# A production deployment would load this securely from configuration
+# or an environment variable rather than storing it in source code.
 app.secret_key = "streamline-hr-development-key"
 
+
 def get_db_connection():
+    """Create and return a connection to the local SQLite database."""
     connection = sqlite3.connect("streamline_hr.db")
     connection.row_factory = sqlite3.Row
     return connection
 
 
 def calculate_working_days(start_date, end_date):
+    """
+    Return the number of Monday-Friday working days in a date range.
+
+    MVP limitation: public holidays and non-standard working patterns
+    are not currently considered.
+    """
     start = datetime.strptime(start_date, "%Y-%m-%d").date()
     end = datetime.strptime(end_date, "%Y-%m-%d").date()
 
@@ -29,6 +42,12 @@ def calculate_working_days(start_date, end_date):
 
 
 def create_database():
+    """
+    Create the MVP database tables and seed the two demonstration users.
+
+    INSERT OR IGNORE allows the application to be restarted without
+    creating duplicate demonstration accounts.
+    """
     connection = get_db_connection()
 
     connection.execute("""
@@ -74,7 +93,14 @@ def create_database():
     connection.commit()
     connection.close()
 
+
 def get_current_user():
+    """
+    Return the user represented by the current development session.
+
+    Alex Morgan is used as the default employee when no user has
+    explicitly been selected.
+    """
     user_id = session.get("user_id", 1)
 
     connection = get_db_connection()
@@ -88,7 +114,14 @@ def get_current_user():
 
     return user
 
+
 def hr_required(view_function):
+    """
+    Restrict a Flask route to users with the HR role.
+
+    The check is performed server-side so HR actions cannot be accessed
+    simply by navigating directly to a protected URL.
+    """
     @wraps(view_function)
     def wrapped_view(*args, **kwargs):
         user = get_current_user()
@@ -100,12 +133,20 @@ def hr_required(view_function):
 
     return wrapped_view
 
+
 def validate_leave_request(
     employee,
     leave_type,
     start_date,
     end_date
 ):
+    """
+    Validate the core business rules for a leave request.
+
+    Returns an error message and None when validation fails.
+    When validation succeeds, returns None and the calculated number
+    of working days.
+    """
     allowed_leave_types = [
         "Annual Leave",
         "Sick Leave",
@@ -126,6 +167,7 @@ def validate_leave_request(
         end_date
     )
 
+    # Only Annual Leave consumes the employee's leave entitlement.
     if (
         leave_type == "Annual Leave"
         and working_days > employee["leave_balance"]
@@ -138,8 +180,10 @@ def validate_leave_request(
 
     return None, working_days
 
+
 @app.route("/")
 def home():
+    """Display the employee dashboard and previous leave requests."""
     connection = get_db_connection()
 
     employee = connection.execute(
@@ -152,7 +196,7 @@ def home():
         WHERE employee_id = 1
         ORDER BY created_at DESC
     """).fetchall()
-    
+
     connection.close()
 
     return render_template(
@@ -164,6 +208,7 @@ def home():
 
 @app.route("/leave-request", methods=["GET", "POST"])
 def leave_request():
+    """Display and process the employee leave request form."""
     message = None
 
     if request.method == "POST":
@@ -171,127 +216,101 @@ def leave_request():
         start_date = request.form["start_date"]
         end_date = request.form["end_date"]
 
-        allowed_leave_types = [
-            "Annual Leave",
-            "Sick Leave",
-            "Unpaid Leave"
-        ]
+        connection = get_db_connection()
 
-        if leave_type not in allowed_leave_types:
-            message = "Please select a valid leave type."
+        employee = connection.execute(
+            "SELECT * FROM employees WHERE employee_id = 1"
+        ).fetchone()
 
-        elif end_date < start_date:
-            message = "End date cannot be before start date."
+        connection.close()
 
-        elif start_date < date.today().isoformat():
-            message = "Leave cannot start before today's date."
+        # Core validation is kept outside the route so that the business
+        # rules can be reused and tested independently.
+        validation_error, working_days = validate_leave_request(
+            employee,
+            leave_type,
+            start_date,
+            end_date
+        )
+
+        if validation_error:
+            message = validation_error
 
         else:
-            working_days = calculate_working_days(start_date, end_date)
-
             connection = get_db_connection()
 
-            employee = connection.execute(
-                "SELECT * FROM employees WHERE employee_id = 1"
-            ).fetchone()
+            # Pending and Approved requests are treated as active when
+            # determining whether a new request overlaps existing leave.
+            overlapping_request = connection.execute("""
+                SELECT *
+                FROM leave_requests
+                WHERE employee_id = ?
+                  AND status IN ('Pending', 'Approved')
+                  AND NOT (end_date < ? OR start_date > ?)
+            """, (
+                1,
+                start_date,
+                end_date
+            )).fetchone()
 
-            connection.close()
+            if overlapping_request:
+                message = (
+                    "This leave request overlaps with an existing "
+                    "pending or approved request."
+                )
 
-            if (
-                 leave_type == "Annual Leave"
-                 and working_days > employee["leave_balance"]
-              ):
-                 message = (
-                     f"Insufficient leave balance. "
-                     f"You have {employee['leave_balance']} days available."
-                 )
+                connection.close()
 
             else:
                 reason = request.form["reason"]
-                    
-            connection = get_db_connection()
-            
-            employee = connection.execute(
-                "SELECT * FROM employees WHERE employee_id = 1"
-            ).fetchone()
-            
-            connection.close()
-            
-            validation_error, working_days = validate_leave_request(
-                employee,
-                leave_type,
-                start_date,
-                end_date
-            )
-            
-            if validation_error:
-                message = validation_error
-            
-            else:
-                connection = get_db_connection()
-            
-                overlapping_request = connection.execute("""
-                    SELECT *
-                    FROM leave_requests
-                    WHERE employee_id = ?
-                      AND status IN ('Pending', 'Approved')
-                      AND NOT (end_date < ? OR start_date > ?)
-                """, (
-                    1,
-                    start_date,
-                    end_date
-                )).fetchone()
-            
-                if overlapping_request:
-                    message = (
-                        "This leave request overlaps with an existing "
-                        "pending or approved request."
-                    )
-            
-                    connection.close()
-            
-                else:
-                    reason = request.form["reason"]
-            
-                    connection.execute("""
-                        INSERT INTO leave_requests
-                        (
-                            employee_id,
-                            leave_type,
-                            start_date,
-                            end_date,
-                            working_days,
-                            status,
-                            reason,
-                            created_at
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (
-                        1,
+
+                connection.execute("""
+                    INSERT INTO leave_requests
+                    (
+                        employee_id,
                         leave_type,
                         start_date,
                         end_date,
                         working_days,
-                        "Pending",
+                        status,
                         reason,
-                        datetime.now().isoformat()
-                    ))
+                        created_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    1,
+                    leave_type,
+                    start_date,
+                    end_date,
+                    working_days,
+                    "Pending",
+                    reason,
+                    datetime.now().isoformat()
+                ))
 
-                    connection.commit()
-                    connection.close()
+                connection.commit()
+                connection.close()
 
-                    message = (
-                        f"Leave request submitted successfully. "
-                        f"Working days requested: {working_days}. "
-                        f"Status: Pending."
-                    ) 
-                     
+                message = (
+                    f"Leave request submitted successfully. "
+                    f"Working days requested: {working_days}. "
+                    f"Status: Pending."
+                )
+
     return render_template(
         "leave request.html",
         message=message
     )
 
+
 @app.route("/switch-user/<int:user_id>")
 def switch_user(user_id):
+    """
+    Switch between demonstration users for development testing.
+
+    This is not production authentication. A production system would
+    use a managed identity service, SSO or equivalent authentication.
+    """
     connection = get_db_connection()
 
     user = connection.execute(
@@ -311,9 +330,11 @@ def switch_user(user_id):
 
     return redirect("/")
 
+
 @app.route("/hr")
 @hr_required
-def hr_dashboard():   
+def hr_dashboard():
+    """Display all leave requests awaiting HR review."""
     connection = get_db_connection()
 
     pending_requests = connection.execute("""
@@ -335,9 +356,13 @@ def hr_dashboard():
     )
 
 
-@app.route("/hr/request/<int:request_id>/<action>", methods=["POST"])
+@app.route(
+    "/hr/request/<int:request_id>/<action>",
+    methods=["POST"]
+)
 @hr_required
 def update_leave_request(request_id, action):
+    """Approve or reject a Pending leave request."""
     if action not in ["approve", "reject"]:
         return "Invalid action", 400
 
@@ -353,26 +378,27 @@ def update_leave_request(request_id, action):
         connection.close()
         return "Leave request not found", 404
 
+    # Prevent the same leave request being processed more than once.
     if leave_request_record["status"] != "Pending":
         connection.close()
         return "Leave request has already been processed", 400
 
     if action == "approve":
         new_status = "Approved"
-        
+
+        # Only approved Annual Leave reduces the employee's entitlement.
         if leave_request_record["leave_type"] == "Annual Leave":
-                connection.execute("""
-                    UPDATE employees
-                    SET leave_balance = leave_balance - ?
-                    WHERE employee_id = ?
-                """, (
-                    leave_request_record["working_days"],
-                    leave_request_record["employee_id"]
-                ))
+            connection.execute("""
+                UPDATE employees
+                SET leave_balance = leave_balance - ?
+                WHERE employee_id = ?
+            """, (
+                leave_request_record["working_days"],
+                leave_request_record["employee_id"]
+            ))
 
     else:
         new_status = "Rejected"
-
 
     connection.execute("""
         UPDATE leave_requests
@@ -381,12 +407,13 @@ def update_leave_request(request_id, action):
     """, (
         new_status,
         request_id
-    ))    
+    ))
 
     connection.commit()
     connection.close()
 
     return redirect("/hr")
+
 
 if __name__ == "__main__":
     create_database()
